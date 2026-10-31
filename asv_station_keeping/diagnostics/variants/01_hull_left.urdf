@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot name="asv_station_keeping_diag">
+  <!-- Mesh-loading test only. Mounting poses are estimates, not Fusion occurrence transforms. 00_base has no visuals. -->
+  <link name="base_footprint" />
+  <link name="base_link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <mass value="0.1" />
+      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001" />
+    </inertial>
+  </link>
+  <link name="hull_left">
+    <inertial>
+      <origin xyz="0.0017543 -0.0000047 -0.0000010" rpy="0 0 0" />
+      <mass value="8.7513272838" />
+      <inertia ixx="0.0159438897" ixy="0" ixz="0" iyy="0.7485544942" iyz="0" izz="0.7485544942" />
+    </inertial>
+    <visual name="hull_left_visual">
+      <origin xyz="-0.971730 0.357754 -1.641617" rpy="0 0 -1.57079632679" />
+      <geometry>
+        <mesh filename="package://asv_station_keeping/meshes/hull.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </visual>
+    <collision name="hull_left_collision">
+      <geometry>
+        <box size="0.724805 0.112973 0.112998" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="base_footprint_to_base_link" type="fixed">
+    <parent link="base_footprint" />
+    <child link="base_link" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+  </joint>
+  <joint name="base_to_hull_left" type="fixed">
+    <parent link="base_link" />
+    <child link="hull_left" />
+    <origin xyz="0 0.175 0.055" rpy="0 0 0" />
+  </joint>
+</robot>

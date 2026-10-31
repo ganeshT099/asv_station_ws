@@ -1,0 +1,33 @@
+research_station_keeping_pid:
+  ros__parameters:
+    use_sim_time: true
+    target_x: 0.0
+    target_y: 0.0
+    target_yaw: 0.0
+    target_slew_rate: 0.25
+    target_yaw_slew_rate: 0.35
+    max_thrust: 5.5
+    kp_x: 5.0
+    ki_x: 0.6
+    kd_x: 5.0
+    kp_y: 5.0
+    ki_y: 0.6
+    kd_y: 5.0
+    kp_yaw: 8.0
+    ki_yaw: 0.4
+    kd_yaw: 12.0
+    integral_limit: 1.50
+    integral_leak: 0.05
+    slew_rate: 1.50
+    velocity_filter_tau: 0.15
+    enable_yaw_control: true
+    enable_tilt_guard: true
+    tilt_soft_limit: 0.30
+    tilt_hard_limit: 0.60
+    status_rate: 2.0
+    position_tolerance: 0.05
+    yaw_tolerance: 0.08
+    current_x: 0.0
+    current_y: 0.0
+    current_z: 0.0
+    log_file: /tmp/research_catamaran_run.csv

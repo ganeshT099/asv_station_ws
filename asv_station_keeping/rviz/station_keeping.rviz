@@ -1,0 +1,334 @@
+Panels:
+  - Class: rviz_common/Displays
+    Help Height: 78
+    Name: Displays
+    Property Tree Widget:
+      Expanded:
+        - /Global Options1
+        - /Station keeping markers1
+        - /Actual path1
+        - /Target path1
+      Splitter Ratio: 0.5
+    Tree Height: 349
+  - Class: rviz_common/Views
+    Expanded:
+      - /Current View1
+    Name: Views
+    Splitter Ratio: 0.5
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Alpha: 0.3499999940395355
+      Cell Size: 1
+      Class: rviz_default_plugins/Grid
+      Color: 99; 99; 99
+      Enabled: true
+      Line Style:
+        Line Width: 0.029999999329447746
+        Value: Lines
+      Name: Ground grid
+      Normal Cell Count: 0
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Plane: XY
+      Plane Cell Count: 20
+      Reference Frame: <Fixed Frame>
+      Value: true
+    - Alpha: 1
+      Class: rviz_default_plugins/RobotModel
+      Collision Enabled: false
+      Description File: ""
+      Description Source: Topic
+      Description Topic:
+        Depth: 5
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot_description
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        base_footprint:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        front_crossbeam:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        payload_platform:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        port_front_propeller:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        port_front_thruster:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        port_hull:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        port_rear_propeller:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        port_rear_thruster:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        rear_crossbeam:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        sensor_head:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        sensor_mast:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        simulation_ballast:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        starboard_front_propeller:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        starboard_front_thruster:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        starboard_hull:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        starboard_rear_propeller:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        starboard_rear_thruster:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+      Mass Properties:
+        Inertia: false
+        Mass: false
+      Name: Research catamaran
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Station keeping markers
+      Namespaces:
+        station_keeping/body_axes: true
+        station_keeping/current: true
+        station_keeping/error: true
+        station_keeping/heading: true
+        station_keeping/path: true
+        station_keeping/status: true
+        station_keeping/target: true
+        station_keeping/thrusters: true
+        station_keeping/velocity: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /research_catamaran/station_keeping/visualization/markers
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Wind and current
+      Namespaces:
+        current: true
+        current_label: true
+        wind: true
+        wind_label: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /research_catamaran/environment/markers_rviz
+      Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: Lidar map
+      Namespaces:
+        map: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /research_catamaran/mapping/map_points
+      Value: true
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz_default_plugins/Path
+      Color: 40; 180; 255
+      Enabled: true
+      Head Diameter: 0.30000001192092896
+      Head Length: 0.20000000298023224
+      Length: 0.30000001192092896
+      Line Style: Lines
+      Line Width: 0.029999999329447746
+      Name: Actual path
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0.07999999821186066
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.10000000149011612
+      Shaft Length: 0.10000000149011612
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /research_catamaran/station_keeping/visualization/actual_path
+      Value: true
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz_default_plugins/Path
+      Color: 255; 220; 40
+      Enabled: true
+      Head Diameter: 0.30000001192092896
+      Head Length: 0.20000000298023224
+      Length: 0.30000001192092896
+      Line Style: Lines
+      Line Width: 0.04500000178813934
+      Name: Target path
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: Axes
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.10000000149011612
+      Shaft Length: 0.10000000149011612
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /research_catamaran/station_keeping/visualization/target_path
+      Value: true
+  Enabled: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: world
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+      Hide Inactive Objects: true
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/FocusCamera
+    - Class: rviz_default_plugins/Measure
+      Line color: 128; 128; 0
+    - Class: rviz_default_plugins/SetInitialPose
+      Covariance x: 0.25
+      Covariance y: 0.25
+      Covariance yaw: 0.06853891909122467
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: initialpose
+    - Class: rviz_default_plugins/SetGoal
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: goal_pose
+    - Class: rviz_default_plugins/PublishPoint
+      Single click: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /clicked_point
+  Transformation:
+    Current:
+      Class: rviz_default_plugins/TF
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 9.450082778930664
+      Enable Stereo Rendering:
+        Stereo Eye Separation: 0.05999999865889549
+        Stereo Focal Distance: 1
+        Swap Stereo Eyes: false
+        Value: false
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Focal Shape Fixed Size: false
+      Focal Shape Size: 0.05000000074505806
+      Invert Z Axis: false
+      Name: Current View
+      Near Clip Distance: 0.009999999776482582
+      Pitch: 0.6899998784065247
+      Target Frame: <Fixed Frame>
+      Value: Orbit (rviz)
+      Yaw: 0.9649999141693115
+    Saved: ~
+Window Geometry:
+  Displays:
+    collapsed: false
+  Height: 900
+  Hide Left Dock: false
+  Hide Right Dock: false
+  QMainWindow State: 000000ff00000000fd0000000100000000000001cb0000032afc0200000002fb000000100044006900730070006c006100790073010000003d000001e8000000c900fffffffb0000000a00560069006500770073010000022b0000013c000000a400ffffff000003a70000032a00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  Views:
+    collapsed: false
+  Width: 1400
+  X: 70
+  Y: 27

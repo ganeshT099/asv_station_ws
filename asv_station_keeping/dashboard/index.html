@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ASV Dynamic Station Keeping | Research Console</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <div class="eyebrow">ROS 2 HUMBLE · GAZEBO FORTRESS</div>
+      <h1>Dynamic Station-Keeping Research Console</h1>
+      <p class="subtitle">Four-thruster catamaran · 3-DOF position and heading control</p>
+    </div>
+    <div class="top-actions">
+      <div id="connectionBadge" class="badge badge-neutral">CONNECTING</div>
+      <button id="demoButton" class="button button-primary">Run scripted demo</button>
+      <button id="snapshotButton" class="button button-secondary">Export snapshot</button>
+      <button id="resetButton" class="button button-danger">Reset integrators</button>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="hero-grid">
+      <article id="statusCard" class="card status-card status-error">
+        <div class="card-heading"><span>Controller status</span><span id="statusLevel" class="status-pill">ERROR</span></div>
+        <div id="statusMessage" class="status-message">Waiting for station-keeping diagnostics</div>
+        <div class="status-meta">
+          <span>Controller <strong id="controllerAge">--</strong></span>
+          <span>Odometry <strong id="odomAge">--</strong></span>
+          <span>Current <strong id="currentAge">--</strong></span>
+        </div>
+      </article>
+      <article class="card metric-card">
+        <div class="metric-label">Position error</div>
+        <div id="positionError" class="metric-value">--</div>
+        <div class="metric-sub">RMSE <span id="positionRmse">--</span> · max <span id="positionMax">--</span></div>
+      </article>
+      <article class="card metric-card">
+        <div class="metric-label">Heading error</div>
+        <div id="headingError" class="metric-value">--</div>
+        <div class="metric-sub">Target <span id="targetYawMetric">--</span> · actual <span id="actualYawMetric">--</span></div>
+      </article>
+      <article class="card metric-card">
+        <div class="metric-label">Real-time factor</div>
+        <div id="rtf" class="metric-value">--</div>
+        <div class="metric-sub">Simulation time <span id="simTime">--</span></div>
+      </article>
+    </section>
+
+    <section class="dashboard-grid">
+      <article class="card panel panel-wide">
+        <div class="card-heading"><span>Position and heading response</span><span class="legend"><i class="dot cyan"></i>actual <i class="dot amber"></i>target</span></div>
+        <div class="chart-row">
+          <div class="chart-wrap"><div class="chart-title">Position error (m)</div><canvas id="errorChart"></canvas></div>
+          <div class="chart-wrap"><div class="chart-title">Heading (rad)</div><canvas id="headingChart"></canvas></div>
+        </div>
+      </article>
+
+      <article class="card panel panel-wide">
+        <div class="card-heading"><span>Motion and environmental disturbance</span><span class="legend"><i class="dot purple"></i>velocity <i class="dot blue"></i>current</span></div>
+        <div class="chart-row">
+          <div class="chart-wrap"><div class="chart-title">Body velocity (m/s, rad/s)</div><canvas id="velocityChart"></canvas></div>
+          <div class="chart-wrap"><div class="chart-title">Current components (m/s)</div><canvas id="currentChart"></canvas></div>
+        </div>
+      </article>
+
+      <article class="card panel">
+        <div class="card-heading"><span>Target pose</span><span class="section-tag">SETPOINT</span></div>
+        <div class="value-grid three">
+          <div><span>x</span><strong id="targetX">--</strong><small>m</small></div>
+          <div><span>y</span><strong id="targetY">--</strong><small>m</small></div>
+          <div><span>yaw</span><strong id="targetYaw">--</strong><small>rad</small></div>
+        </div>
+      </article>
+
+      <article class="card panel">
+        <div class="card-heading"><span>Actual pose</span><span class="section-tag">ODOMETRY</span></div>
+        <div class="value-grid three">
+          <div><span>x</span><strong id="poseX">--</strong><small>m</small></div>
+          <div><span>y</span><strong id="poseY">--</strong><small>m</small></div>
+          <div><span>z</span><strong id="poseZ">--</strong><small>m</small></div>
+          <div><span>roll</span><strong id="poseRoll">--</strong><small>rad</small></div>
+          <div><span>pitch</span><strong id="posePitch">--</strong><small>rad</small></div>
+          <div><span>yaw</span><strong id="poseYaw">--</strong><small>rad</small></div>
+        </div>
+      </article>
+
+      <article class="card panel">
+        <div class="card-heading"><span>Body-frame errors</span><span class="section-tag">CONTROL ERROR</span></div>
+        <div class="value-grid three">
+          <div><span>e<sub>x</sub></span><strong id="errorXBody">--</strong><small>m</small></div>
+          <div><span>e<sub>y</sub></span><strong id="errorYBody">--</strong><small>m</small></div>
+          <div><span>e<sub>yaw</sub></span><strong id="errorYaw">--</strong><small>rad</small></div>
+        </div>
+      </article>
+
+      <article class="card panel">
+        <div class="card-heading"><span>Body velocities</span><span class="section-tag">FEEDBACK</span></div>
+        <div class="value-grid three">
+          <div><span>u</span><strong id="velocityU">--</strong><small>m/s</small></div>
+          <div><span>v</span><strong id="velocityV">--</strong><small>m/s</small></div>
+          <div><span>r</span><strong id="velocityR">--</strong><small>rad/s</small></div>
+        </div>
+      </article>
+
+      <article class="card panel">
+        <div class="card-heading"><span>Control wrench</span><span class="section-tag">PID OUTPUT</span></div>
+        <div class="value-grid three">
+          <div><span>surge</span><strong id="controlSurge">--</strong><small>N</small></div>
+          <div><span>sway</span><strong id="controlSway">--</strong><small>N</small></div>
+          <div><span>yaw</span><strong id="controlYaw">--</strong><small>N·m</small></div>
+        </div>
+        <div class="integral-row">
+          <span>Integral state</span>
+          <strong id="integralState">-- / -- / --</strong>
+        </div>
+      </article>
+
+      <article class="card panel panel-wide">
+        <div class="card-heading"><span>Thruster allocation</span><span id="thrustSafety" class="section-tag">NOMINAL</span></div>
+        <div class="thruster-grid">
+          <div class="thruster"><div class="thruster-top"><span>Port front</span><strong id="thrustPF">--</strong></div><div class="bar"><i id="barPF"></i></div></div>
+          <div class="thruster"><div class="thruster-top"><span>Starboard front</span><strong id="thrustSF">--</strong></div><div class="bar"><i id="barSF"></i></div></div>
+          <div class="thruster"><div class="thruster-top"><span>Port rear</span><strong id="thrustPR">--</strong></div><div class="bar"><i id="barPR"></i></div></div>
+          <div class="thruster"><div class="thruster-top"><span>Starboard rear</span><strong id="thrustSR">--</strong></div><div class="bar"><i id="barSR"></i></div></div>
+        </div>
+        <div class="chart-wrap thrust-chart"><canvas id="thrustChart"></canvas></div>
+      </article>
+
+      <article class="card panel">
+        <div class="card-heading"><span>Current disturbance</span><span class="section-tag">ENVIRONMENT</span></div>
+        <div class="value-grid four">
+          <div><span>x</span><strong id="currentX">--</strong><small>m/s</small></div>
+          <div><span>y</span><strong id="currentY">--</strong><small>m/s</small></div>
+          <div><span>z</span><strong id="currentZ">--</strong><small>m/s</small></div>
+          <div><span>|V|</span><strong id="currentMagnitude">--</strong><small>m/s</small></div>
+        </div>
+      </article>
+
+      <article class="card panel">
+        <div class="card-heading"><span>Safety state</span><span class="section-tag">LIMITS</span></div>
+        <div class="safety-list">
+          <div><span>Tilt scale</span><strong id="tiltScale">--</strong></div>
+          <div><span>Thrust saturation</span><strong id="saturationState">--</strong></div>
+          <div><span>Tilt guard</span><strong id="tiltGuardState">--</strong></div>
+          <div><span>Roll / pitch</span><strong id="attitudeState">--</strong></div>
+        </div>
+      </article>
+
+      <article class="card panel panel-wide">
+        <div class="card-heading"><span>Live controller parameters</span><span class="section-tag">EDITABLE</span></div>
+        <div id="parameterForm" class="parameter-form"></div>
+        <div id="parameterNotice" class="form-notice"></div>
+      </article>
+    </section>
+  </main>
+  <footer class="footer">Research console · Telemetry is supplied by <code>/research_catamaran/station_keeping/status</code> · Values are simulation results, not physical validation.</footer>
+  <script src="/app.js"></script>
+</body>
+</html>

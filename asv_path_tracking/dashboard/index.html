@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ASV Path Tracking Research Console</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">ROS 2 HUMBLE · GAZEBO FORTRESS</p>
+      <h1>ASV geometric path-tracking console</h1>
+      <p class="subtitle">Reference geometry, live vehicle trace, controller state and research metrics.</p>
+    </div>
+    <div id="health" class="health stale">WAITING</div>
+  </header>
+
+  <main class="grid">
+    <section class="card controls">
+      <h2>Experiment controls</h2>
+      <div class="control-row">
+        <label>Path
+          <select id="path_type">
+            <option value="circle">Circle</option>
+            <option value="ellipse">Ellipse</option>
+            <option value="figure_eight">Figure eight</option>
+            <option value="rounded_rectangle">Rounded rectangle</option>
+            <option value="triangle">Smoothed triangle</option>
+          </select>
+        </label>
+        <label>Speed (m/s)<input id="speed" type="number" min="0" step="0.01" value="0.10"></label>
+        <label>Width (m)<input id="path_width" type="number" min="0.2" step="0.1" value="1.60"></label>
+        <label>Height (m)<input id="path_height" type="number" min="0.2" step="0.1" value="1.20"></label>
+      </div>
+      <div class="button-row">
+        <button id="start" class="primary">Start / resume</button>
+        <button id="pause">Pause</button>
+        <button id="reset">Reset trace</button>
+        <button id="apply">Apply path parameters</button>
+      </div>
+      <p id="path-message" class="muted">Waiting for the path reference.</p>
+    </section>
+
+    <section class="card metric-grid">
+      <div><span>Path</span><strong id="metric-path">--</strong></div>
+      <div><span>Progress</span><strong id="metric-progress">--</strong></div>
+      <div><span>Cross-track</span><strong id="metric-cross">--</strong></div>
+      <div><span>Along-track</span><strong id="metric-along">--</strong></div>
+      <div><span>Heading error</span><strong id="metric-heading">--</strong></div>
+      <div><span>Current</span><strong id="metric-current">--</strong></div>
+    </section>
+
+    <section class="card plot-card">
+      <div class="card-title-row"><h2>Live XY trace</h2><span class="legend"><i class="reference"></i>reference <i class="actual"></i>actual</span></div>
+      <canvas id="plot" width="900" height="500"></canvas>
+    </section>
+
+    <section class="card telemetry">
+      <h2>Vehicle and controller</h2>
+      <pre id="telemetry">Waiting for telemetry…</pre>
+    </section>
+
+    <section class="card telemetry">
+      <h2>Topics and health</h2>
+      <pre id="health-detail">Waiting for topics…</pre>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>

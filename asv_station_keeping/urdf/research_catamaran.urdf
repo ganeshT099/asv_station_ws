@@ -1,0 +1,604 @@
+<?xml version="1.0"?>
+<robot name="research_catamaran">
+
+  <!--
+    Display-ready research baseline for the ASV station-keeping project.
+
+    Coordinate convention:
+      +X = forward
+      +Y = port / left
+      +Z = upward
+
+    The hull spacing, hull collision dimensions, fore/aft thruster spacing and
+    mesh scale are retained from the original visible two-hull/four-thruster
+    model. The thruster vertical mount is simulation-tuned for a stable surge
+    response. The deck, cross beams, payload and sensor mast are simple,
+    clearly named primitives so this baseline remains readable and robust in
+    Gazebo.
+
+    This is a simulation baseline, not a claim that the added primitives
+    reproduce the SolidWorks assembly. Replace those transforms with
+    CAD-derived transforms when the native assembly becomes available.
+  -->
+
+  <!-- ==================== ROOT AND CENTRAL DECK ==================== -->
+  <link name="base_footprint"/>
+
+  <joint name="base_footprint_to_base_link" type="fixed">
+    <parent link="base_footprint"/>
+    <child link="base_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <link name="base_link">
+    <inertial>
+      <origin xyz="0 0 0.12" rpy="0 0 0"/>
+      <mass value="4.0"/>
+      <inertia ixx="0.102" ixy="0" ixz="0"
+               iyy="0.285" iyz="0" izz="0.387"/>
+    </inertial>
+    <visual name="deck_visual">
+      <origin xyz="0 0 0.12" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.92 0.55 0.06"/>
+      </geometry>
+      <material name="deck_blue">
+        <color rgba="0.08 0.22 0.42 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <!-- ==================== ORIGINAL HULLS ==================== -->
+  <link name="port_hull">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="8.751327"/>
+      <inertia ixx="0.08" ixy="0" ixz="0"
+               iyy="0.30" iyz="0" izz="0.30"/>
+    </inertial>
+    <visual name="port_hull_visual">
+      <origin xyz="-0.971730 0.357754 -1.641617"
+              rpy="0 0 -1.57079632679"/>
+      <geometry>
+        <mesh filename="package://asv_station_keeping/meshes/hull.stl"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+    <collision name="port_hull_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <!-- Simulation buoyancy volume. The visual STL remains unchanged. -->
+        <box size="0.80 0.16 0.24"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="starboard_hull">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="8.751327"/>
+      <inertia ixx="0.08" ixy="0" ixz="0"
+               iyy="0.30" iyz="0" izz="0.30"/>
+    </inertial>
+    <visual name="starboard_hull_visual">
+      <origin xyz="-0.971730 0.357754 -1.641617"
+              rpy="0 0 -1.57079632679"/>
+      <geometry>
+        <mesh filename="package://asv_station_keeping/meshes/hull.stl"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+    <collision name="starboard_hull_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <!-- Simulation buoyancy volume. The visual STL remains unchanged. -->
+        <box size="0.80 0.16 0.24"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="base_to_port_hull" type="fixed">
+    <parent link="base_link"/>
+    <child link="port_hull"/>
+    <origin xyz="0 0.175 0.055" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="base_to_starboard_hull" type="fixed">
+    <parent link="base_link"/>
+    <child link="starboard_hull"/>
+    <origin xyz="0 -0.175 0.055" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Hidden simulation ballast lowers the centre of mass so the simplified
+       two-box buoyancy model has a stable roll/pitch response. It is a
+       simulation parameter, not a SolidWorks component. -->
+  <link name="simulation_ballast">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="12.0"/>
+      <inertia ixx="0.40" ixy="0" ixz="0"
+               iyy="0.40" iyz="0" izz="0.40"/>
+    </inertial>
+  </link>
+
+  <joint name="base_to_simulation_ballast" type="fixed">
+    <parent link="base_link"/>
+    <child link="simulation_ballast"/>
+    <origin xyz="0 0 -0.20" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ==================== STRUCTURAL CROSS BEAMS ==================== -->
+  <link name="front_crossbeam">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.35"/>
+      <inertia ixx="0.00890" ixy="0" ixz="0"
+               iyy="0.00015" iyz="0" izz="0.00890"/>
+    </inertial>
+    <visual>
+      <geometry><box size="0.05 0.55 0.05"/></geometry>
+      <material name="beam_orange">
+        <color rgba="0.85 0.35 0.06 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <link name="rear_crossbeam">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.35"/>
+      <inertia ixx="0.00890" ixy="0" ixz="0"
+               iyy="0.00015" iyz="0" izz="0.00890"/>
+    </inertial>
+    <visual>
+      <geometry><box size="0.05 0.55 0.05"/></geometry>
+      <material name="beam_orange">
+        <color rgba="0.85 0.35 0.06 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="base_to_front_crossbeam" type="fixed">
+    <parent link="base_link"/>
+    <child link="front_crossbeam"/>
+    <origin xyz="0.29 0 0.16" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="base_to_rear_crossbeam" type="fixed">
+    <parent link="base_link"/>
+    <child link="rear_crossbeam"/>
+    <origin xyz="-0.29 0 0.16" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ==================== PAYLOAD AND SENSOR ARCHITECTURE ==================== -->
+  <link name="payload_platform">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.0"/>
+      <inertia ixx="0.0067" ixy="0" ixz="0"
+               iyy="0.0149" iyz="0" izz="0.0212"/>
+    </inertial>
+    <visual>
+      <geometry><box size="0.42 0.28 0.05"/></geometry>
+      <material name="payload_gray">
+        <color rgba="0.35 0.39 0.43 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="base_to_payload_platform" type="fixed">
+    <parent link="base_link"/>
+    <child link="payload_platform"/>
+    <origin xyz="0 0 0.20" rpy="0 0 0"/>
+  </joint>
+
+  <link name="sensor_mast">
+    <inertial>
+      <origin xyz="0 0 0.14" rpy="0 0 0"/>
+      <mass value="0.20"/>
+      <inertia ixx="0.0012" ixy="0" ixz="0"
+               iyy="0.0012" iyz="0" izz="0.00003"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0.14" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.018" length="0.28"/></geometry>
+      <material name="mast_black">
+        <color rgba="0.04 0.04 0.05 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="platform_to_sensor_mast" type="fixed">
+    <parent link="payload_platform"/>
+    <child link="sensor_mast"/>
+    <origin xyz="0 0 0.025" rpy="0 0 0"/>
+  </joint>
+
+  <link name="sensor_head">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.15"/>
+      <inertia ixx="0.0003" ixy="0" ixz="0"
+               iyy="0.0003" iyz="0" izz="0.0003"/>
+    </inertial>
+    <visual>
+      <geometry><box size="0.10 0.08 0.06"/></geometry>
+      <material name="sensor_yellow">
+        <color rgba="0.95 0.75 0.08 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="mast_to_sensor_head" type="fixed">
+    <parent link="sensor_mast"/>
+    <child link="sensor_head"/>
+    <origin xyz="0 0 0.30" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ==================== FOUR THRUSTER HOUSINGS ==================== -->
+  <!-- These reuse the original T200 visual mesh. The simulation mount height
+       puts the thrust line close to the buoyancy/centre-of-mass envelope so
+       surge commands do not inject a large pitch moment. This is a
+       simulation-stability parameter, not a CAD placement claim. -->
+  <link name="port_front_thruster">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.532471"/>
+      <inertia ixx="0.002" ixy="0" ixz="0"
+               iyy="0.002" iyz="0" izz="0.002"/>
+    </inertial>
+    <visual>
+      <geometry>
+        <mesh filename="package://asv_station_keeping/meshes/thruster.stl"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <link name="starboard_front_thruster">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.532471"/>
+      <inertia ixx="0.002" ixy="0" ixz="0"
+               iyy="0.002" iyz="0" izz="0.002"/>
+    </inertial>
+    <visual>
+      <geometry>
+        <mesh filename="package://asv_station_keeping/meshes/thruster.stl"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <link name="port_rear_thruster">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.532471"/>
+      <inertia ixx="0.002" ixy="0" ixz="0"
+               iyy="0.002" iyz="0" izz="0.002"/>
+    </inertial>
+    <visual>
+      <geometry>
+        <mesh filename="package://asv_station_keeping/meshes/thruster.stl"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <link name="starboard_rear_thruster">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.532471"/>
+      <inertia ixx="0.002" ixy="0" ixz="0"
+               iyy="0.002" iyz="0" izz="0.002"/>
+    </inertial>
+    <visual>
+      <geometry>
+        <mesh filename="package://asv_station_keeping/meshes/thruster.stl"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <joint name="port_hull_to_port_front_thruster" type="fixed">
+    <parent link="port_hull"/>
+    <child link="port_front_thruster"/>
+    <origin xyz="0.25 0 -0.05"
+            rpy="0 1.57079632679 0.785398163397"/>
+  </joint>
+
+  <joint name="starboard_hull_to_starboard_front_thruster" type="fixed">
+    <parent link="starboard_hull"/>
+    <child link="starboard_front_thruster"/>
+    <origin xyz="0.25 0 -0.05"
+            rpy="0 1.57079632679 -0.785398163397"/>
+  </joint>
+
+  <joint name="port_hull_to_port_rear_thruster" type="fixed">
+    <parent link="port_hull"/>
+    <child link="port_rear_thruster"/>
+    <origin xyz="-0.25 0 -0.05"
+            rpy="0 1.57079632679 2.356194490192"/>
+  </joint>
+
+  <joint name="starboard_hull_to_starboard_rear_thruster" type="fixed">
+    <parent link="starboard_hull"/>
+    <child link="starboard_rear_thruster"/>
+    <origin xyz="-0.25 0 -0.05"
+            rpy="0 1.57079632679 -2.356194490192"/>
+  </joint>
+
+  <!-- ==================== PROPULSER ROTATION INTERFACES ==================== -->
+  <!-- The propeller disks are simple visual placeholders. The existing STL
+       remains the primary thruster visual; these links make the four intended
+       shaft axes explicit for later controllers. -->
+  <link name="port_front_propeller">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.04"/>
+      <inertia ixx="0.00001" ixy="0" ixz="0"
+               iyy="0.00001" iyz="0" izz="0.00001"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.035" length="0.018"/></geometry>
+      <material name="propeller_yellow">
+        <color rgba="0.95 0.72 0.05 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <link name="starboard_front_propeller">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.04"/>
+      <inertia ixx="0.00001" ixy="0" ixz="0"
+               iyy="0.00001" iyz="0" izz="0.00001"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.035" length="0.018"/></geometry>
+      <material name="propeller_yellow">
+        <color rgba="0.95 0.72 0.05 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <link name="port_rear_propeller">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.04"/>
+      <inertia ixx="0.00001" ixy="0" ixz="0"
+               iyy="0.00001" iyz="0" izz="0.00001"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.035" length="0.018"/></geometry>
+      <material name="propeller_yellow">
+        <color rgba="0.95 0.72 0.05 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <link name="starboard_rear_propeller">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.04"/>
+      <inertia ixx="0.00001" ixy="0" ixz="0"
+               iyy="0.00001" iyz="0" izz="0.00001"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.035" length="0.018"/></geometry>
+      <material name="propeller_yellow">
+        <color rgba="0.95 0.72 0.05 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="port_front_propeller_joint" type="continuous">
+    <parent link="port_front_thruster"/>
+    <child link="port_front_propeller"/>
+    <origin xyz="0.065 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="50" velocity="100"/>
+    <dynamics damping="0.01" friction="0.001"/>
+  </joint>
+
+  <joint name="starboard_front_propeller_joint" type="continuous">
+    <parent link="starboard_front_thruster"/>
+    <child link="starboard_front_propeller"/>
+    <origin xyz="0.065 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="50" velocity="100"/>
+    <dynamics damping="0.01" friction="0.001"/>
+  </joint>
+
+  <joint name="port_rear_propeller_joint" type="continuous">
+    <parent link="port_rear_thruster"/>
+    <child link="port_rear_propeller"/>
+    <origin xyz="0.065 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="50" velocity="100"/>
+    <dynamics damping="0.01" friction="0.001"/>
+  </joint>
+
+  <joint name="starboard_rear_propeller_joint" type="continuous">
+    <parent link="starboard_rear_thruster"/>
+    <child link="starboard_rear_propeller"/>
+    <origin xyz="0.065 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="50" velocity="100"/>
+    <dynamics damping="0.01" friction="0.001"/>
+  </joint>
+
+  <!-- ==================== GAZEBO FORTRESS INTERFACES ==================== -->
+  <!-- The coefficient and conservative +/-6 command cap are software-test
+       values, not measured T200 data. The cap keeps the baseline maneuver
+       tests slow until the vehicle attitude response is validated. -->
+  <gazebo>
+    <self_collide>false</self_collide>
+
+    <plugin filename="ignition-gazebo-joint-state-publisher-system"
+            name="ignition::gazebo::systems::JointStatePublisher">
+      <topic>/research_catamaran/joint_states</topic>
+    </plugin>
+
+    <plugin filename="ignition-gazebo-odometry-publisher-system"
+            name="ignition::gazebo::systems::OdometryPublisher">
+      <dimensions>3</dimensions>
+    </plugin>
+
+    <!-- Simulation-only damping keeps the surface vehicle near a planar
+         operating regime while retaining free XY/yaw motion for algorithms.
+         Gazebo lumps fixed-joint links, so the merged root link base_footprint is the damping target; the name base_link no longer exists after SDF conversion. It was
+         the inertia-free TF root required by KDL. -->
+    <plugin filename="ignition-gazebo-hydrodynamics-system"
+            name="ignition::gazebo::systems::Hydrodynamics">
+      <link_name>base_footprint</link_name>
+      <default_current>0 0 0</default_current>
+      <!-- Added mass (water carried with the hull) and Coriolis coupling,
+           roughly 15-25 % of the vehicle mass/inertia for a slender twin
+           hull.  Estimates: replace after system identification. -->
+      <disable_coriolis>true</disable_coriolis>
+      <disable_added_mass>true</disable_added_mass>
+      <xDotU>-6.0</xDotU>
+      <yDotV>-12.0</yDotV>
+      <zDotW>-25.0</zDotW>
+      <kDotP>-0.2</kDotP>
+      <mDotQ>-0.6</mDotQ>
+      <nDotR>-0.8</nDotR>
+      <!-- Explicit linear damping terms avoid the Fortress hydrodynamics
+           missing-linear-velocity diagnostic and make the model's damping
+           configuration visible to the experiment record. -->
+      <xU>-0.60</xU>
+      <yV>-0.80</yV>
+      <zW>-1.50</zW>
+      <kP>-0.50</kP>
+      <mQ>-1.00</mQ>
+      <nR>-0.50</nR>
+      <xUabsU>-2.0</xUabsU>
+      <yVabsV>-3.0</yVabsV>
+      <zWabsW>-6.0</zWabsW>
+      <kPabsP>-12.0</kPabsP>
+      <mQabsQ>-18.0</mQabsQ>
+      <nRabsR>-5.0</nRabsR>
+    </plugin>
+
+    <plugin filename="ignition-gazebo-thruster-system"
+            name="ignition::gazebo::systems::Thruster">
+      <joint_name>port_front_propeller_joint</joint_name>
+      <propeller_diameter>0.0762</propeller_diameter>
+      <fluid_density>1000</fluid_density>
+      <thrust_coefficient>1.0</thrust_coefficient>
+      <velocity_control>true</velocity_control>
+      <max_thrust_cmd>6</max_thrust_cmd>
+      <min_thrust_cmd>-6</min_thrust_cmd>
+    </plugin>
+    <plugin filename="ignition-gazebo-thruster-system"
+            name="ignition::gazebo::systems::Thruster">
+      <joint_name>starboard_front_propeller_joint</joint_name>
+      <propeller_diameter>0.0762</propeller_diameter>
+      <fluid_density>1000</fluid_density>
+      <thrust_coefficient>1.0</thrust_coefficient>
+      <velocity_control>true</velocity_control>
+      <max_thrust_cmd>6</max_thrust_cmd>
+      <min_thrust_cmd>-6</min_thrust_cmd>
+    </plugin>
+    <plugin filename="ignition-gazebo-thruster-system"
+            name="ignition::gazebo::systems::Thruster">
+      <joint_name>port_rear_propeller_joint</joint_name>
+      <propeller_diameter>0.0762</propeller_diameter>
+      <fluid_density>1000</fluid_density>
+      <thrust_coefficient>1.0</thrust_coefficient>
+      <velocity_control>true</velocity_control>
+      <max_thrust_cmd>6</max_thrust_cmd>
+      <min_thrust_cmd>-6</min_thrust_cmd>
+    </plugin>
+    <plugin filename="ignition-gazebo-thruster-system"
+            name="ignition::gazebo::systems::Thruster">
+      <joint_name>starboard_rear_propeller_joint</joint_name>
+      <propeller_diameter>0.0762</propeller_diameter>
+      <fluid_density>1000</fluid_density>
+      <thrust_coefficient>1.0</thrust_coefficient>
+      <velocity_control>true</velocity_control>
+      <max_thrust_cmd>6</max_thrust_cmd>
+      <min_thrust_cmd>-6</min_thrust_cmd>
+    </plugin>
+  </gazebo>
+
+  <gazebo reference="sensor_head">
+    <!-- Noise values are representative of a BNO085-class IMU and an
+         RTK-grade GNSS receiver.  Edit them to match your hardware; set them
+         to zero to recover ideal sensors. -->
+    <sensor name="research_imu" type="imu">
+      <always_on>true</always_on>
+      <update_rate>100</update_rate>
+      <visualize>false</visualize>
+      <topic>/research_catamaran/imu</topic>
+      <imu>
+        <angular_velocity>
+          <x><noise type="gaussian"><mean>0</mean><stddev>0.004</stddev></noise></x>
+          <y><noise type="gaussian"><mean>0</mean><stddev>0.004</stddev></noise></y>
+          <z><noise type="gaussian"><mean>0</mean><stddev>0.004</stddev></noise></z>
+        </angular_velocity>
+        <linear_acceleration>
+          <x><noise type="gaussian"><mean>0</mean><stddev>0.04</stddev></noise></x>
+          <y><noise type="gaussian"><mean>0</mean><stddev>0.04</stddev></noise></y>
+          <z><noise type="gaussian"><mean>0</mean><stddev>0.04</stddev></noise></z>
+        </linear_acceleration>
+      </imu>
+    </sensor>
+    <sensor name="research_lidar" type="gpu_lidar">
+      <always_on>true</always_on>
+      <update_rate>10</update_rate>
+      <visualize>false</visualize>
+      <topic>/research_catamaran/scan</topic>
+      <pose>0 0 0.06 0 0 0</pose>
+      <lidar>
+        <scan>
+          <horizontal>
+            <samples>360</samples>
+            <resolution>1</resolution>
+            <min_angle>-3.14159</min_angle>
+            <max_angle>3.14159</max_angle>
+          </horizontal>
+          <vertical>
+            <samples>1</samples>
+            <resolution>1</resolution>
+            <min_angle>0</min_angle>
+            <max_angle>0</max_angle>
+          </vertical>
+        </scan>
+        <range>
+          <min>0.15</min>
+          <max>12.0</max>
+          <resolution>0.01</resolution>
+        </range>
+        <noise>
+          <type>gaussian</type>
+          <mean>0.0</mean>
+          <stddev>0.01</stddev>
+        </noise>
+      </lidar>
+    </sensor>
+    <sensor name="research_gps" type="navsat">
+      <always_on>true</always_on>
+      <update_rate>10</update_rate>
+      <topic>/research_catamaran/gps</topic>
+      <navsat>
+        <position_sensing>
+          <horizontal>
+            <!-- Fortress applies horizontal navsat noise in DEGREES of
+                 latitude/longitude, not metres: 4.5e-7 deg ~= 0.05 m. -->
+            <noise type="gaussian"><mean>0</mean><stddev>4.5e-7</stddev></noise>
+          </horizontal>
+          <vertical>
+            <noise type="gaussian"><mean>0</mean><stddev>0.10</stddev></noise>
+          </vertical>
+        </position_sensing>
+      </navsat>
+    </sensor>
+  </gazebo>
+
+</robot>

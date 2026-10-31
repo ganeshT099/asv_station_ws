@@ -1,0 +1,239 @@
+<?xml version="1.0"?>
+<robot name="asv_station_keeping">
+
+  <!--
+    Dynamic Station Keeping ASV - simulation model
+
+    Coordinate convention:
+      +X = forward
+      +Y = left
+      +Z = upward
+
+    Hull STL native long axis = CAD/STL Y-axis.
+    The hull mesh is rotated -90 deg about Z so its long axis becomes +X.
+
+    Thruster STL native main axis is approximately +Z.
+    Each thruster is rotated +90 deg about Y to make its thrust axis horizontal,
+    then yawed to its required 45-degree direction.
+  -->
+
+  <!-- ==================== BASE ==================== -->
+  <!-- KDL requires an inertia-free root; retain the physical base inertia. -->
+  <link name="base_footprint"/>
+  <joint name="base_footprint_to_base_link" type="fixed">
+    <parent link="base_footprint"/>
+    <child link="base_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <link name="base_link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.0"/>
+      <inertia ixx="0.02" ixy="0" ixz="0"
+               iyy="0.02" iyz="0" izz="0.02"/>
+    </inertial>
+  </link>
+
+  <!-- ==================== LEFT HULL ==================== -->
+  <!-- hull:1 in the Fusion assembly -->
+  <link name="left_hull">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="8.751327"/>
+      <inertia ixx="0.08" ixy="0" ixz="0"
+               iyy="0.30" iyz="0" izz="0.30"/>
+    </inertial>
+
+    <visual>
+      <!-- Rz(-90 deg) requires the mesh-centering translation to be rotated too. -->
+      <origin xyz="-0.971730 0.357754 -1.641617"
+              rpy="0 0 -1.57079632679"/>
+      <geometry>
+        <mesh filename="package://asv_station_keeping/meshes/hull.stl"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+
+    <collision>
+      <!-- Bounding-box collision avoids expensive CAD triangle contacts. -->
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.724805 0.112973 0.112998"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ==================== RIGHT HULL ==================== -->
+  <!-- hull:2 in the Fusion assembly -->
+  <link name="right_hull">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="8.751327"/>
+      <inertia ixx="0.08" ixy="0" ixz="0"
+               iyy="0.30" iyz="0" izz="0.30"/>
+    </inertial>
+
+    <visual>
+      <origin xyz="-0.971730 0.357754 -1.641617"
+              rpy="0 0 -1.57079632679"/>
+      <geometry>
+        <mesh filename="package://asv_station_keeping/meshes/hull.stl"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.724805 0.112973 0.112998"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ==================== THRUSTERS ==================== -->
+  <!-- The STL is reused for all four T200 representations. -->
+
+  <link name="thruster_1">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.532471"/>
+      <inertia ixx="0.002" ixy="0" ixz="0"
+               iyy="0.002" iyz="0" izz="0.002"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://asv_station_keeping/meshes/thruster.stl"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.011060" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.049" length="0.112679"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="thruster_2">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.532471"/>
+      <inertia ixx="0.002" ixy="0" ixz="0"
+               iyy="0.002" iyz="0" izz="0.002"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://asv_station_keeping/meshes/thruster.stl"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.011060" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.049" length="0.112679"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="thruster_3">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.532471"/>
+      <inertia ixx="0.002" ixy="0" ixz="0"
+               iyy="0.002" iyz="0" izz="0.002"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://asv_station_keeping/meshes/thruster.stl"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.011060" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.049" length="0.112679"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="thruster_4">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.532471"/>
+      <inertia ixx="0.002" ixy="0" ixz="0"
+               iyy="0.002" iyz="0" izz="0.002"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://asv_station_keeping/meshes/thruster.stl"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.011060" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.049" length="0.112679"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ==================== HULL JOINTS ==================== -->
+  <!-- Hull centre-to-centre spacing = 350 mm. -->
+  <joint name="base_to_left_hull" type="fixed">
+    <parent link="base_link"/>
+    <child link="left_hull"/>
+    <origin xyz="0 0.175 0.055" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="base_to_right_hull" type="fixed">
+    <parent link="base_link"/>
+    <child link="right_hull"/>
+    <origin xyz="0 -0.175 0.055" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ==================== THRUSTER JOINTS ==================== -->
+  <!--
+    Thruster positions are approximately +/-250 mm fore/aft.
+    Native thruster axis +Z is pitched +90 deg about Y to become +X,
+    then yawed to obtain the four diagonal horizontal thrust directions.
+
+    T1: +X +Y  = +45 deg
+    T2: +X -Y  = -45 deg
+    T3: -X +Y  = +135 deg
+    T4: -X -Y  = -135 deg
+  -->
+
+  <joint name="left_hull_to_thruster_1" type="fixed">
+    <parent link="left_hull"/>
+    <child link="thruster_1"/>
+    <origin xyz="0.25 0 -0.12"
+            rpy="0 1.57079632679 0.785398163397"/>
+  </joint>
+
+  <joint name="right_hull_to_thruster_2" type="fixed">
+    <parent link="right_hull"/>
+    <child link="thruster_2"/>
+    <origin xyz="0.25 0 -0.12"
+            rpy="0 1.57079632679 -0.785398163397"/>
+  </joint>
+
+  <joint name="left_hull_to_thruster_3" type="fixed">
+    <parent link="left_hull"/>
+    <child link="thruster_3"/>
+    <origin xyz="-0.25 0 -0.12"
+            rpy="0 1.57079632679 2.356194490192"/>
+  </joint>
+
+  <joint name="right_hull_to_thruster_4" type="fixed">
+    <parent link="right_hull"/>
+    <child link="thruster_4"/>
+    <origin xyz="-0.25 0 -0.12"
+            rpy="0 1.57079632679 -2.356194490192"/>
+  </joint>
+
+</robot>
