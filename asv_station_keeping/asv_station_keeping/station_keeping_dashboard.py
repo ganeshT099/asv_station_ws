@@ -48,9 +48,9 @@ CURRENT_NODE = '/research_current_disturbance'
 
 
 PARAMETER_STATUS_KEYS = {
-    'target_x': 'target_x_m',
-    'target_y': 'target_y_m',
-    'target_yaw': 'target_yaw_rad',
+    'target_x': 'commanded_target_x_m',
+    'target_y': 'commanded_target_y_m',
+    'target_yaw': 'commanded_target_yaw_rad',
     'target_slew_rate': 'target_slew_rate_mps',
     'target_yaw_slew_rate': 'target_yaw_slew_rate_radps',
     'max_thrust': 'max_thrust_N',

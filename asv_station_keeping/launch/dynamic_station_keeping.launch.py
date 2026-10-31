@@ -138,6 +138,10 @@ def generate_launch_description():
                 'odom_topic': feedback_topic,
                 'use_dob': ParameterValue(
                     LaunchConfiguration('use_dob'), value_type=bool),
+                'controller_type': ParameterValue(
+                    LaunchConfiguration('controller_type'), value_type=str),
+                'allocation_mode': ParameterValue(
+                    LaunchConfiguration('allocation_mode'), value_type=str),
                 'hold_enabled': ParameterValue(
                     LaunchConfiguration('hold_enabled'), value_type=bool),
                 'actuator_model': ParameterValue(
@@ -197,6 +201,12 @@ def generate_launch_description():
                 "-90)) - 1.0*__import__('math').sin(__import__('math')."
                 "radians(", LaunchConfiguration('wind_direction_deg'), ")), 2)"
             ])),
+        DeclareLaunchArgument(
+            'controller_type', default_value='pid',
+            description='Control law: pid | lqr | smc | mpc.'),
+        DeclareLaunchArgument(
+            'allocation_mode', default_value='lstsq',
+            description='Thrust allocation: lstsq | optimal.'),
         DeclareLaunchArgument(
             'hold_enabled', default_value='true',
             description='false = thrusters off (uncontrolled baseline).'),

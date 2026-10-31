@@ -7,6 +7,7 @@ from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
     IncludeLaunchDescription,
+    SetEnvironmentVariable,
     TimerAction,
 )
 from launch.conditions import IfCondition
@@ -14,6 +15,20 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
+
+
+NVIDIA_GL = '/usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.0'
+
+
+def gpu_offload():
+    """Render Gazebo and RViz on the NVIDIA GPU instead of llvmpipe (CPU)."""
+    if os.environ.get('ASV_NO_GPU_OFFLOAD') or not os.path.exists(NVIDIA_GL):
+        return []
+    return [
+        SetEnvironmentVariable('__NV_PRIME_RENDER_OFFLOAD', '1'),
+        SetEnvironmentVariable('__GLX_VENDOR_LIBRARY_NAME', 'nvidia'),
+        SetEnvironmentVariable('__VK_LAYER_NV_optimus', 'NVIDIA_only'),
+    ]
 
 
 def generate_launch_description():
@@ -89,6 +104,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        *gpu_offload(),
         DeclareLaunchArgument(
             'target_x', default_value='0.40',
             description='Desired station x coordinate in metres.'),
@@ -112,6 +128,8 @@ def generate_launch_description():
         DeclareLaunchArgument('scenario', default_value='none'),
         DeclareLaunchArgument('mission', default_value='none'),
         DeclareLaunchArgument('use_dob', default_value='false'),
+        DeclareLaunchArgument('controller_type', default_value='pid'),
+        DeclareLaunchArgument('allocation_mode', default_value='lstsq'),
         DeclareLaunchArgument('headless', default_value='false'),
         DeclareLaunchArgument('wind_speed', default_value='3.0'),
         DeclareLaunchArgument('wind_direction_deg', default_value='135.0'),
@@ -172,6 +190,8 @@ def generate_launch_description():
                 'scenario': LaunchConfiguration('scenario'),
                 'mission': LaunchConfiguration('mission'),
                 'use_dob': LaunchConfiguration('use_dob'),
+                'controller_type': LaunchConfiguration('controller_type'),
+                'allocation_mode': LaunchConfiguration('allocation_mode'),
                 'headless': LaunchConfiguration('headless'),
                 'log_file': LaunchConfiguration('log_file'),
                 'world_file': LaunchConfiguration('world_file'),

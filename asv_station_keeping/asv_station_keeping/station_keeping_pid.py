@@ -9,12 +9,16 @@ import rclpy
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from geometry_msgs.msg import Vector3
 from nav_msgs.msg import Odometry
-from rcl_interfaces.msg import SetParametersResult
+from rcl_interfaces.msg import ParameterDescriptor, SetParametersResult
 from rclpy.node import Node
 from std_msgs.msg import Empty, Float64
 
+from asv_station_keeping.actuation import (
+    actuator_step, prioritised_wrench, wrench_limits)
+from asv_station_keeping.controllers import (
+    CONTROLLER_NAMES, MOMENT_PER_UNIT, make_controller)
 from asv_station_keeping.twist_to_thruster import (
-    FORCE_PER_UNIT, THRUSTER_AXES, allocate)
+    FORCE_PER_UNIT, THRUSTER_AXES, allocate, allocate_optimal)
 
 
 def yaw_from_quaternion(x, y, z, w):
@@ -46,11 +50,20 @@ class StationKeepingPid(Node):
     def __init__(self):
         super().__init__('research_station_keeping_pid')
 
-        self.declare_parameter('target_x', 0.0)
-        self.declare_parameter('target_y', 0.0)
-        self.declare_parameter('target_yaw', 0.0)
+        # Dynamic typing lets `ros2 param set ... target_x 1` accept integers.
+        flexible = ParameterDescriptor(dynamic_typing=True)
+        self.declare_parameter('target_x', 0.0, flexible)
+        self.declare_parameter('target_y', 0.0, flexible)
+        self.declare_parameter('target_yaw', 0.0, flexible)
+        # Keep targets inside the pool walls (x +/-5.05 m, y +/-4.05 m).
+        self.declare_parameter('target_limit_x', 4.0)
+        self.declare_parameter('target_limit_y', 3.0)
         self.declare_parameter('target_slew_rate', 0.25)
         self.declare_parameter('target_yaw_slew_rate', 0.35)
+        # Watchdogs: a stalled/lagging simulator or a bad estimate must never
+        # leave the thrusters driving on stale or implausible feedback.
+        self.declare_parameter('odom_timeout', 0.5)
+        self.declare_parameter('max_feedback_speed', 1.5)
         self.declare_parameter('max_thrust', 4.5)
         self.declare_parameter('kp_x', 8.0)
         self.declare_parameter('kd_x', 5.0)
@@ -94,6 +107,13 @@ class StationKeepingPid(Node):
         self.declare_parameter('dob_gain', 1.0)
         self.declare_parameter('dob_tau', 6.0)
         self.declare_parameter('vehicle_mass', 45.0)
+        # Control law under test: pid (inline baseline), lqr, smc or mpc.
+        # All of them share the saturation, allocation, actuator model and
+        # (optionally) the disturbance-observer feed-forward below.
+        self.declare_parameter('controller_type', 'pid')
+        # Thrust allocation: lstsq (minimum-norm) or optimal (energy-optimal
+        # with per-thruster limits enforced inside the allocation).
+        self.declare_parameter('allocation_mode', 'lstsq')
         # allocator_health_i: what the controller BELIEVES (fault detection);
         # thruster_gain_i: what the hardware actually delivers.
         for index in range(4):
@@ -114,6 +134,8 @@ class StationKeepingPid(Node):
         self.target_yaw_slew_rate = self.parameter_float(
             'target_yaw_slew_rate')
         self.max_thrust = self.parameter_float('max_thrust')
+        self.odom_timeout = self.parameter_float('odom_timeout')
+        self.max_feedback_speed = self.parameter_float('max_feedback_speed')
         self.kp_x = self.parameter_float('kp_x')
         self.kd_x = self.parameter_float('kd_x')
         self.ki_x = self.parameter_float('ki_x')
@@ -162,11 +184,23 @@ class StationKeepingPid(Node):
             self.parameter_float(f'allocator_health_{i}') for i in range(4)]
         self.thruster_gain = [
             self.parameter_float(f'thruster_gain_{i}') for i in range(4)]
+        self.controller_type = str(
+            self.get_parameter('controller_type').value).lower()
+        if self.controller_type not in CONTROLLER_NAMES:
+            raise ValueError(
+                f'controller_type must be one of {CONTROLLER_NAMES}')
+        self.allocation_mode = str(
+            self.get_parameter('allocation_mode').value).lower()
+        self.library_controller = (
+            None if self.controller_type == 'pid'
+            else make_controller(self.controller_type))
         self.dob_z = None
         self.dob_estimate = (0.0, 0.0)
         self.power_index = 0.0
         self.energy_index = 0.0
         self.odom = None
+        self.odom_rx_time = None
+        self.feedback_fault = False
         self.truth = None
         self.last_time = None
         self.last_status_time = None
@@ -279,6 +313,7 @@ class StationKeepingPid(Node):
 
     def odom_callback(self, message):
         self.odom = message
+        self.odom_rx_time = self.get_clock().now().nanoseconds * 1e-9
 
     def truth_callback(self, message):
         self.truth = message
@@ -300,6 +335,8 @@ class StationKeepingPid(Node):
             return
 
         now = self.get_clock().now().nanoseconds * 1e-9
+        if self.feedback_unsafe(now):
+            return
         if self.experiment_start_time is None:
             self.experiment_start_time = now
         if self.last_time is None:
@@ -397,6 +434,21 @@ class StationKeepingPid(Node):
                 - self.kd_yaw * filtered_r
             )
 
+        if self.library_controller is not None:
+            translation_units, yaw_limit_units = wrench_limits(
+                self.max_thrust, self.yaw_reserve, self.allocation_mode)
+            wrench = self.library_controller.compute(
+                (ex_body, ey_body, eyaw),
+                (filtered_u, filtered_v, filtered_r), dt,
+                self.thrust_saturated,
+                (translation_units * FORCE_PER_UNIT,
+                 translation_units * FORCE_PER_UNIT,
+                 yaw_limit_units * MOMENT_PER_UNIT))
+            ux = wrench[0] / FORCE_PER_UNIT
+            uy = wrench[1] / FORCE_PER_UNIT
+            uz = wrench[2] / MOMENT_PER_UNIT \
+                if self.enable_yaw_control else 0.0
+
         dob_world = self.update_observer(
             yaw, filtered_u, filtered_v, dt)
         if self.use_dob:
@@ -409,29 +461,28 @@ class StationKeepingPid(Node):
         # Prioritised saturation.  Every thruster carries |ux| + |uy| + |uz|
         # in the worst case, so cap translation and yaw separately to keep a
         # guaranteed share of the thrust budget for heading.
-        yaw_limit = min(max(self.yaw_reserve, 0.0), self.max_thrust)
-        translation_limit = max(self.max_thrust - yaw_limit, 1e-6)
-        translation = abs(ux) + abs(uy)
-        clipped = False
-        if translation > translation_limit:
-            ux *= translation_limit / translation
-            uy *= translation_limit / translation
-            clipped = True
-        if abs(uz) > yaw_limit:
-            uz = math.copysign(yaw_limit, uz)
-            clipped = True
+        ux, uy, uz, clipped = prioritised_wrench(
+            ux, uy, uz, self.max_thrust, self.yaw_reserve,
+            self.allocation_mode)
 
         # Keep algorithm experiments and manual maneuvers on one canonical
         # four-thruster sign convention.  The allocator drops any thruster
         # the fault detector has marked failed.
         self.last_control_wrench = (ux, uy, uz)
-        raw_commands = allocate(ux, uy, uz, self.allocator_health)
-        commands = raw_commands
-        scale = max(1.0, max(abs(command) for command in commands))
-        self.thrust_saturated = clipped or scale > self.max_thrust
-        if scale > self.max_thrust:
-            commands = tuple(
-                command * self.max_thrust / scale for command in commands)
+        if self.allocation_mode == 'optimal':
+            raw_commands, allocation_scale = allocate_optimal(
+                ux, uy, uz, self.allocator_health, limit=self.max_thrust)
+            commands = raw_commands
+            self.thrust_saturated = clipped or allocation_scale < 0.999999
+        else:
+            raw_commands = allocate(ux, uy, uz, self.allocator_health)
+            commands = raw_commands
+            scale = max(1.0, max(abs(command) for command in commands))
+            self.thrust_saturated = clipped or scale > self.max_thrust
+            if scale > self.max_thrust:
+                commands = tuple(
+                    command * self.max_thrust / scale
+                    for command in commands)
 
         tilt_scale = self.tilt_scale(roll, pitch)
         self.tilt_guard_active = tilt_scale < 0.999999
@@ -517,6 +568,42 @@ class StationKeepingPid(Node):
             ])
             self.csv_file.flush()
 
+    def feedback_unsafe(self, now):
+        """Cut thrust when feedback is stale or physically implausible.
+
+        Stale data (simulator stall, dropped odometry) or a diverged estimate
+        makes the damping term push the hull the wrong way, and the boat then
+        accelerates away.  Zero the thrusters and drop controller memory so
+        recovery starts clean.
+        """
+        twist = self.odom.twist.twist
+        age = now - self.odom_rx_time if self.odom_rx_time is not None else 0.0
+        speed = math.hypot(twist.linear.x, twist.linear.y)
+        stale = self.odom_timeout > 0.0 and age > self.odom_timeout
+        implausible = (
+            self.max_feedback_speed > 0.0 and speed > self.max_feedback_speed)
+        if not (stale or implausible or not math.isfinite(speed)):
+            if self.feedback_fault:
+                self.get_logger().info('Feedback recovered; resuming hold.')
+            self.feedback_fault = False
+            return False
+        if not self.feedback_fault:
+            reason = 'stale odometry' if stale else 'implausible velocity'
+            self.get_logger().warn(
+                f'{reason} (age={age:.2f}s, speed={speed:.2f} m/s): '
+                'thrusters off until feedback is valid.')
+        self.feedback_fault = True
+        self.integral_x = self.integral_y = self.integral_yaw = 0.0
+        if self.library_controller is not None:
+            self.library_controller.reset()
+        self.filtered_u = self.filtered_v = self.filtered_r = None
+        self.last_time = None
+        self.output_commands = (0.0, 0.0, 0.0, 0.0)
+        self.actuator_state = (0.0, 0.0, 0.0, 0.0)
+        self.delivered = (0.0, 0.0, 0.0, 0.0)
+        self.publish_commands(self.delivered)
+        return True
+
     def integrate_error(self, value, error, dt):
         """Integrate one error channel with a symmetric anti-windup limit."""
         limit = max(self.integral_limit, 0.0)
@@ -542,13 +629,16 @@ class StationKeepingPid(Node):
         self.integral_x = 0.0
         self.integral_y = 0.0
         self.integral_yaw = 0.0
+        if self.library_controller is not None:
+            self.library_controller.reset()
         self.get_logger().info('Station-keeping integrators reset.')
 
     def on_parameter_change(self, parameters):
         """Apply safe controller updates requested by the live dashboard."""
         float_names = {
             'target_x', 'target_y', 'target_yaw', 'target_slew_rate',
-            'target_yaw_slew_rate', 'max_thrust',
+            'target_yaw_slew_rate', 'max_thrust', 'odom_timeout',
+            'max_feedback_speed',
             'kp_x', 'kd_x', 'ki_x', 'kp_y', 'kd_y', 'ki_y',
             'kp_yaw', 'kd_yaw', 'ki_yaw', 'integral_limit', 'slew_rate',
             'integral_leak', 'velocity_filter_tau',
@@ -598,6 +688,16 @@ class StationKeepingPid(Node):
                         successful=False,
                         reason=f'{name} must be finite',
                     )
+                limit_name = {'target_x': 'target_limit_x',
+                              'target_y': 'target_limit_y'}.get(name)
+                if limit_name is not None:
+                    limit = self.parameter_float(limit_name)
+                    if abs(value) > limit:
+                        return SetParametersResult(
+                            successful=False,
+                            reason=(f'{name} {value:g} is outside the pool '
+                                    f'limit of +/-{limit:g} m'),
+                        )
                 if value < minimums.get(name, -math.inf):
                     return SetParametersResult(
                         successful=False,
@@ -616,6 +716,19 @@ class StationKeepingPid(Node):
                     return SetParametersResult(
                         successful=False, reason=f'{name} must be in [0, 1]')
                 updates[name] = value
+            elif name == 'controller_type':
+                if str(parameter.value).lower() not in CONTROLLER_NAMES:
+                    return SetParametersResult(
+                        successful=False,
+                        reason=f'controller_type must be one of '
+                               f'{CONTROLLER_NAMES}')
+                updates[name] = str(parameter.value).lower()
+            elif name == 'allocation_mode':
+                if str(parameter.value).lower() not in ('lstsq', 'optimal'):
+                    return SetParametersResult(
+                        successful=False,
+                        reason='allocation_mode must be lstsq or optimal')
+                updates[name] = str(parameter.value).lower()
             elif name == 'log_file':
                 return SetParametersResult(
                     successful=False,
@@ -645,6 +758,12 @@ class StationKeepingPid(Node):
             if name in indexed:
                 attribute, index = indexed[name]
                 getattr(self, attribute)[index] = value
+            elif name == 'controller_type':
+                self.controller_type = value
+                self.library_controller = (
+                    None if value == 'pid' else make_controller(value))
+                self.integral_x = self.integral_y = self.integral_yaw = 0.0
+                self.get_logger().info(f'Control law switched to {value}.')
             else:
                 setattr(self, name, value)
         return SetParametersResult(successful=True, reason='updated')
@@ -719,6 +838,8 @@ class StationKeepingPid(Node):
                 message = 'station keeping safety limiting'
             values = {
                 'controller_state': message,
+                'control_law': self.controller_type,
+                'allocation_mode': self.allocation_mode,
                 'target_x_m': self.active_target_x,
                 'target_y_m': self.active_target_y,
                 'target_yaw_rad': self.active_target_yaw,
@@ -850,20 +971,11 @@ class StationKeepingPid(Node):
         if not self.actuator_model:
             return tuple(
                 c * g for c, g in zip(commands, self.thruster_gain))
-        tau = max(self.thruster_lag_tau, 0.0)
-        alpha = 1.0 if tau <= 1e-9 else dt / (tau + dt)
-        lagged = tuple(
-            state + alpha * (command - state)
-            for state, command in zip(self.actuator_state, commands))
-        self.actuator_state = lagged
-        delivered = []
-        for value in lagged:
-            if abs(value) < self.thruster_deadband:
-                value = 0.0
-            elif value < 0.0:
-                value *= self.thruster_reverse_scale
-            delivered.append(value)
-        return tuple(c * g for c, g in zip(delivered, self.thruster_gain))
+        self.actuator_state, delivered = actuator_step(
+            self.actuator_state, commands, dt, self.thruster_deadband,
+            self.thruster_lag_tau, self.thruster_reverse_scale,
+            self.thruster_gain)
+        return delivered
 
     def publish_commands(self, commands):
         for key, command in zip(self.thrust_publishers, commands):

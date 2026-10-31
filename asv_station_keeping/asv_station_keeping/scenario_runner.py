@@ -20,7 +20,7 @@ ESTIMATOR = '/research_state_estimator'
 SEA = '/research_current_disturbance'
 
 NARRATED = [
-    [5, SEA, 'wind_speed', 5.0, 'Wind rises to 5 m/s'],
+    [5, SEA, 'wind_speed', 4.0, 'Wind rises to 4 m/s'],
     [20, ESTIMATOR, 'gps_enabled', False,
      'FAULT: GPS signal lost - dead-reckoning on the IMU'],
     [28, ESTIMATOR, 'gps_enabled', True, 'GPS restored'],

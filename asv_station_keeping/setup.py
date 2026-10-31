@@ -110,6 +110,8 @@ setup(
             'asv_station_keeping.station_keeping_dashboard:main',
             'research_station_keeping_demo = '
             'asv_station_keeping.station_keeping_demo:main',
+            'research_study = '
+            'asv_station_keeping.research_study:main',
         ],
     },
 )

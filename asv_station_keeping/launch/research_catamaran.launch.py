@@ -22,6 +22,24 @@ from launch.substitutions import (
 )
 
 
+NVIDIA_GL = '/usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.0'
+
+
+def gpu_offload():
+    """Render Gazebo (GUI and lidar) on the NVIDIA GPU, not llvmpipe (CPU).
+
+    Software GL competes with the 500 Hz physics for CPU, which drops the
+    real-time factor and makes the controller act on stale, jittery data.
+    """
+    if os.environ.get('ASV_NO_GPU_OFFLOAD') or not os.path.exists(NVIDIA_GL):
+        return []
+    return [
+        SetEnvironmentVariable('__NV_PRIME_RENDER_OFFLOAD', '1'),
+        SetEnvironmentVariable('__GLX_VENDOR_LIBRARY_NAME', 'nvidia'),
+        SetEnvironmentVariable('__VK_LAYER_NV_optimus', 'NVIDIA_only'),
+    ]
+
+
 def generate_launch_description():
     package_name = 'asv_station_keeping'
     pkg_share = get_package_share_directory(package_name)
@@ -38,6 +56,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        *gpu_offload(),
         DeclareLaunchArgument(
             'model_file',
             default_value='research_catamaran.urdf',

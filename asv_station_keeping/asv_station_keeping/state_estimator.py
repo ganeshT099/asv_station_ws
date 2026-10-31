@@ -60,8 +60,10 @@ class AxisFilter:
     """Position/velocity Kalman filter driven by measured acceleration."""
 
     def __init__(self, accel_std, position_std, initial_position=0.0,
-                 accel_limit=6.0, gate=0.5, reset_after=3):
+                 accel_limit=6.0, gate=0.5, reset_after=3,
+                 speed_limit=1.2):
         self.accel_limit = accel_limit
+        self.speed_limit = speed_limit
         self.gate = gate
         self.reset_after = reset_after
         self.rejected = 0
@@ -80,7 +82,10 @@ class AxisFilter:
         # slamming produce IMU spikes that would otherwise be integrated.
         accel = max(-self.accel_limit, min(self.accel_limit, accel))
         self.p += self.v * dt + 0.5 * accel * dt * dt
-        self.v += accel * dt
+        # A hull in this pool cannot exceed ~1 m/s; an unbounded integrated
+        # IMU bias (e.g. gravity leaking in on a tilt) must not run away.
+        self.v = max(-self.speed_limit, min(self.speed_limit,
+                                            self.v + accel * dt))
         q = self.accel_var
         pp = self.pp + 2.0 * dt * self.pv + dt * dt * self.vv \
             + 0.25 * dt ** 4 * q
@@ -112,6 +117,82 @@ class AxisFilter:
         self.pp, self.pv, self.vv = pp, pv, vv
 
 
+class BiasAxisFilter(AxisFilter):
+    """Position/velocity/accelerometer-bias Kalman filter for one axis.
+
+    State ``[p, v, b]``: the IMU reports ``a_meas = a_true + b + noise`` and
+    the bias ``b`` follows a random walk.  GPS fixes make ``b`` observable,
+    so when GPS later drops out the filter dead-reckons with the bias already
+    removed, where the two-state filter drifts quadratically.
+    """
+
+    def __init__(self, accel_std, position_std, initial_position=0.0,
+                 bias_walk_std=0.002, initial_bias_std=0.1, **kwargs):
+        super().__init__(accel_std, position_std, initial_position, **kwargs)
+        self.b = 0.0
+        self.bias_walk_var = bias_walk_std ** 2
+        # Covariance, full symmetric 3x3: [[pp, pv, pb], [pv, vv, vb], ...].
+        self.pb = 0.0
+        self.vb = 0.0
+        self.bb = initial_bias_std ** 2
+
+    def predict(self, accel, dt):
+        """Propagate with the bias-corrected acceleration."""
+        accel = max(-self.accel_limit, min(self.accel_limit, accel))
+        a = accel - self.b
+        self.p += self.v * dt + 0.5 * a * dt * dt
+        self.v = max(-self.speed_limit, min(self.speed_limit,
+                                            self.v + a * dt))
+        # P' = F P F^T + Q with F = [[1, dt, -dt^2/2], [0, 1, -dt], [0, 0, 1]]
+        h = 0.5 * dt * dt
+        pp, pv, pb = self.pp, self.pv, self.pb
+        vv, vb, bb = self.vv, self.vb, self.bb
+        # Rows of F P.
+        r0 = (pp + dt * pv - h * pb, pv + dt * vv - h * vb,
+              pb + dt * vb - h * bb)
+        r1 = (pv - dt * pb, vv - dt * vb, vb - dt * bb)
+        r2 = (pb, vb, bb)
+        # (F P) F^T.
+        self.pp = r0[0] + dt * r0[1] - h * r0[2]
+        self.pv = r0[1] - dt * r0[2]
+        self.pb = r0[2]
+        self.vv = r1[1] - dt * r1[2]
+        self.vb = r1[2]
+        self.bb = r2[2]
+        q = self.accel_var
+        self.pp += 0.25 * dt ** 4 * q
+        self.pv += 0.5 * dt ** 3 * q
+        self.vv += dt * dt * q
+        self.bb += self.bias_walk_var * dt
+
+    def update(self, measured_position):
+        """Correct with a position fix (same gating as the base filter)."""
+        innovation = measured_position - self.p
+        if abs(innovation) > self.gate:
+            self.rejected += 1
+            if self.rejected < self.reset_after:
+                return
+            self.p, self.v = measured_position, 0.0
+            self.pp, self.pv, self.vv = self.meas_var, 0.0, 1.0
+            self.pb = self.vb = 0.0
+            self.rejected = 0
+            return
+        self.rejected = 0
+        s = self.pp + self.meas_var
+        k_p, k_v, k_b = self.pp / s, self.pv / s, self.pb / s
+        self.p += k_p * innovation
+        self.v += k_v * innovation
+        self.b += k_b * innovation
+        pp, pv, pb = self.pp, self.pv, self.pb
+        vv, vb, bb = self.vv, self.vb, self.bb
+        self.pp = pp - k_p * pp
+        self.pv = pv - k_p * pv
+        self.pb = pb - k_p * pb
+        self.vv = vv - k_v * pv
+        self.vb = vb - k_v * pb
+        self.bb = bb - k_b * pb
+
+
 class StateEstimator(Node):
     """Publish a fused odometry estimate from noisy GPS and IMU."""
 
@@ -128,6 +209,10 @@ class StateEstimator(Node):
         self.declare_parameter('gps_position_std', 0.05)
         self.declare_parameter('imu_accel_std', 0.04)
         self.declare_parameter('gyro_filter_tau', 0.05)
+        # Estimate the accelerometer bias (random-walk state).  Off keeps the
+        # original two-state filter used by the demonstrations.
+        self.declare_parameter('estimate_accel_bias', False)
+        self.declare_parameter('accel_bias_walk_std', 0.002)
         # Antenna offset from the vehicle origin (body frame, metres).  The
         # mast is on the centreline so this is zero for the default model.
         self.declare_parameter('antenna_offset_x', 0.0)
@@ -151,6 +236,10 @@ class StateEstimator(Node):
         self.gps_std = float(self.get_parameter('gps_position_std').value)
         self.accel_std = float(self.get_parameter('imu_accel_std').value)
         self.gyro_tau = float(self.get_parameter('gyro_filter_tau').value)
+        self.estimate_bias = bool(
+            self.get_parameter('estimate_accel_bias').value)
+        self.bias_walk_std = float(
+            self.get_parameter('accel_bias_walk_std').value)
         self.antenna = (
             float(self.get_parameter('antenna_offset_x').value),
             float(self.get_parameter('antenna_offset_y').value),
@@ -206,10 +295,18 @@ class StateEstimator(Node):
         east -= cos_yaw * self.antenna[0] - sin_yaw * self.antenna[1]
         north -= sin_yaw * self.antenna[0] + cos_yaw * self.antenna[1]
         if self.filters is None:
-            self.filters = (
-                AxisFilter(self.accel_std, self.gps_std, east),
-                AxisFilter(self.accel_std, self.gps_std, north),
-            )
+            if self.estimate_bias:
+                self.filters = (
+                    BiasAxisFilter(self.accel_std, self.gps_std, east,
+                                   bias_walk_std=self.bias_walk_std),
+                    BiasAxisFilter(self.accel_std, self.gps_std, north,
+                                   bias_walk_std=self.bias_walk_std),
+                )
+            else:
+                self.filters = (
+                    AxisFilter(self.accel_std, self.gps_std, east),
+                    AxisFilter(self.accel_std, self.gps_std, north),
+                )
             return
         self.filters[0].update(east)
         self.filters[1].update(north)

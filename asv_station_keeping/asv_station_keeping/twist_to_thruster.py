@@ -1,6 +1,7 @@
 """Mix planar motion commands into the four diagonal thruster commands."""
 
 import math
+from functools import lru_cache
 from typing import Any, Dict, cast
 
 import rclpy
@@ -47,6 +48,97 @@ def allocate(surge, sway, yaw, health=(1.0, 1.0, 1.0, 1.0)):
         solution, *_ = np.linalg.lstsq(matrix[:, active], wrench, rcond=None)
         commands[active] = solution
     return tuple(float(c) for c in commands)
+
+
+@lru_cache(maxsize=32)
+def _allocation_factors(active):
+    """Cache the pseudo-inverse and null space for a set of healthy thrusters."""
+    import numpy as np
+    sub = np.array(allocation_matrix())[:, list(active)]
+    _u, s_vals, vt = np.linalg.svd(sub)
+    rank = int(np.sum(s_vals > 1e-9))
+    return sub, np.linalg.pinv(sub), vt[rank:].T
+
+
+def allocate_optimal(surge, sway, yaw, health=(1.0, 1.0, 1.0, 1.0),
+                     limit=None):
+    """Minimum-energy allocation that respects the per-thruster limit.
+
+    Solves ``min ||T||^2  s.t.  A T = w,  |T_i| <= limit`` exactly.  Four
+    thrusters give three degrees of freedom, so the exact solutions form a
+    line ``T = T0 + s n`` with ``T0`` the minimum-norm solution and ``n`` the
+    null-space direction (orthogonal to ``T0``).  The norm is therefore
+    ``|T0|^2 + s^2`` and the optimum is the feasible ``s`` closest to zero:
+
+    * nothing saturates  -> identical to :func:`allocate` (``s = 0``);
+    * a thruster would saturate -> the null space redistributes thrust to the
+      other thrusters so the *commanded wrench is still delivered*, where the
+      plain least-squares solution would have to scale the whole demand down.
+
+    The map is continuous in the wrench (no thruster-pattern jumps).  If the
+    wrench is infeasible even so, translation is scaled back first (yaw keeps
+    priority), then everything, preserving the force direction.
+
+    Returns ``(commands, scale)``; ``scale`` < 1 means the demand had to be
+    reduced to stay within the thrust limit.
+    """
+    import numpy as np
+    active = [i for i, h in enumerate(health) if h >= 0.5]
+    commands = np.zeros(4)
+    if not active:
+        return tuple(float(c) for c in commands), 0.0
+    sub, pinv, null = _allocation_factors(tuple(active))
+    wrench = np.array([
+        FORCE_PER_UNIT * surge, FORCE_PER_UNIT * sway, MOMENT_PER_UNIT * yaw])
+    if limit is None:
+        commands[active] = pinv @ wrench
+        return tuple(float(c) for c in commands), 1.0
+
+    def solve(scaled):
+        """Return (feasible, thrust vector) for a wrench."""
+        base = pinv @ scaled
+        if null.shape[1] == 0:
+            ok = bool(np.all(np.abs(base) <= limit + 1e-9)) and np.allclose(
+                sub @ base, scaled, atol=1e-6)
+            return ok, base
+        direction = null[:, 0]
+        low, high = -np.inf, np.inf
+        for t0, d in zip(base, direction):
+            if abs(d) < 1e-12:
+                if abs(t0) > limit + 1e-9:
+                    return False, base
+                continue
+            a, b = (-limit - t0) / d, (limit - t0) / d
+            low, high = max(low, min(a, b)), min(high, max(a, b))
+        if low > high + 1e-12:
+            return False, base
+        shift = min(max(0.0, low), high)
+        return True, base + shift * direction
+
+    def with_scale(translation_scale, yaw_scale):
+        return wrench * np.array(
+            [translation_scale, translation_scale, yaw_scale])
+
+    scale = 1.0
+    ok, solution = solve(wrench)
+    if not ok:
+        # Yaw has priority: shrink translation, then everything.
+        lo, hi = 0.0, 1.0
+        yaw_only = solve(with_scale(0.0, 1.0))[0]
+        for _ in range(30):
+            mid = 0.5 * (lo + hi)
+            trial = with_scale(mid, 1.0) if yaw_only else with_scale(mid, mid)
+            if solve(trial)[0]:
+                lo = mid
+            else:
+                hi = mid
+        scale = lo
+        trial = with_scale(lo, 1.0) if yaw_only else with_scale(lo, lo)
+        ok, solution = solve(trial)
+        if not ok:
+            solution = np.clip(solution, -limit, limit)
+    commands[active] = solution
+    return tuple(float(c) for c in commands), scale
 
 
 def mix_thrusters(surge, sway, yaw):

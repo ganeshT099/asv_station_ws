@@ -91,7 +91,7 @@ THRUSTER_DIRECTIONS = {
 
 
 def level_as_int(level) -> int:
-    """Return a DiagnosticStatus level as an int.
+    r"""Return a DiagnosticStatus level as an int.
 
     ROS 2 Humble's generated Python message exposes the ``byte`` field as a
     one-byte ``bytes`` object (``b'\\x02'``), which ``int()`` rejects.
